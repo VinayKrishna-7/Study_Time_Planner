@@ -2,10 +2,6 @@
 
 > A clean, lightweight daily study planner and session timer web application built entirely with **Vanilla HTML5, CSS3, and JavaScript**.
 
-[![No Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](#tech-stack)
-[![Pure Vanilla JS](https://img.shields.io/badge/JavaScript-ES6+-yellow.svg)](#tech-stack)
-[![Theme](https://img.shields.io/badge/Theme-Light%20%7C%20Dark-blue.svg)](#features)
-[![Responsive](https://img.shields.io/badge/Responsive-Mobile%20%7C%20Desktop-orange.svg)](#features)
 
 ---
 
