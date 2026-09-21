@@ -15,10 +15,19 @@
           <h1>Study Time Planner</h1>
           <p class="subtitle">Plan your study time and organize your subjects into a simple daily schedule.</p>
         </div>
-        <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Toggle dark mode" title="Toggle theme">
-          <span class="theme-icon" id="theme-icon">🌙</span>
-          <span class="theme-label" id="theme-label">Dark</span>
-        </button>
+        <div class="header-actions">
+          <!-- Live Current Clock Time -->
+          <div class="live-clock-badge" id="live-clock" title="Current Clock Time">
+            <span class="live-clock-icon" aria-hidden="true">🕒</span>
+            <span class="live-clock-label">Current Time:</span>
+            <span class="live-clock-time" id="clock-display">--:--:-- --</span>
+          </div>
+          <!-- Theme Toggle Button -->
+          <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Toggle dark mode" title="Toggle theme">
+            <span class="theme-icon" id="theme-icon">🌙</span>
+            <span class="theme-label" id="theme-label">Dark</span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -117,10 +126,43 @@
             </div>
           </div>
 
+          <!-- Active Study Session Timer Widget -->
+          <div id="session-timer-card" class="session-timer-card hidden" role="region" aria-label="Active Study Timer">
+            <div class="timer-header">
+              <div class="timer-badge">
+                <span class="pulse-dot"></span>
+                <span>Study Timer</span>
+              </div>
+              <button type="button" id="btn-close-timer" class="btn-close-timer" aria-label="Close timer" title="Close timer">✕</button>
+            </div>
+            <div class="timer-body">
+              <div class="timer-subject-info">
+                <span class="timer-subject-label">Current Subject</span>
+                <h4 id="timer-subject-name" class="timer-subject-name">DSA</h4>
+                <span id="timer-target-time" class="timer-target-time">09:00 AM — 11:00 AM (2 hours)</span>
+              </div>
+              <div class="timer-display-wrap">
+                <div id="timer-countdown" class="timer-countdown">02:00:00</div>
+                <div class="timer-progress-track">
+                  <div id="timer-progress-bar" class="timer-progress-bar"></div>
+                </div>
+              </div>
+              <div class="timer-controls">
+                <button type="button" id="btn-timer-toggle" class="btn btn-primary btn-timer-action">
+                  <span id="timer-toggle-icon">▶</span>
+                  <span id="timer-toggle-text">Start Timer</span>
+                </button>
+                <button type="button" id="btn-timer-reset" class="btn btn-secondary btn-timer-action">
+                  <span>↺</span> Reset
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Schedule Heading -->
           <div class="schedule-header">
             <h3 class="schedule-title">Today's Study Plan</h3>
-            <span class="schedule-note">Starts at 09:00 AM</span>
+            <span class="schedule-note">Starts at 09:00 AM &bull; Click "Start Timer" on any subject</span>
           </div>
 
           <!-- Timeline List -->

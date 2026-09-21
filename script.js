@@ -1,13 +1,14 @@
 /**
  * Study Time Planner
  * Plain JavaScript implementation for scheduling study sessions.
+ * Features live clock and interactive study session timer.
  * Zero external libraries or frameworks.
  */
 
 // Constant default start time: 09:00 AM (9 * 60 minutes)
 const DEFAULT_START_MINUTES = 9 * 60;
 
-// DOM Elements
+// DOM Elements - Planner Input
 const availableTimeInput = document.getElementById('available-time');
 const subjectsList = document.getElementById('subjects-list');
 const btnAddSubject = document.getElementById('btn-add-subject');
@@ -16,18 +17,34 @@ const btnClear = document.getElementById('btn-clear');
 const btnLoadExample = document.getElementById('btn-load-example');
 const errorBanner = document.getElementById('error-banner');
 
+// DOM Elements - Planner Output
 const emptyState = document.getElementById('empty-state');
 const scheduleOutput = document.getElementById('schedule-output');
 const timelineList = document.getElementById('timeline-list');
 const remainingNotice = document.getElementById('remaining-notice');
 
+// DOM Elements - Summary
 const summaryTotalTime = document.getElementById('summary-total-time');
 const summarySubjectsCount = document.getElementById('summary-subjects-count');
 const summaryRemainingTime = document.getElementById('summary-remaining-time');
 
+// DOM Elements - Theme & Clock
 const themeToggleBtn = document.getElementById('theme-toggle');
 const themeIcon = document.getElementById('theme-icon');
 const themeLabel = document.getElementById('theme-label');
+const clockDisplay = document.getElementById('clock-display');
+
+// DOM Elements - Study Session Timer
+const sessionTimerCard = document.getElementById('session-timer-card');
+const timerSubjectName = document.getElementById('timer-subject-name');
+const timerTargetTime = document.getElementById('timer-target-time');
+const timerCountdown = document.getElementById('timer-countdown');
+const timerProgressBar = document.getElementById('timer-progress-bar');
+const btnTimerToggle = document.getElementById('btn-timer-toggle');
+const timerToggleIcon = document.getElementById('timer-toggle-icon');
+const timerToggleText = document.getElementById('timer-toggle-text');
+const btnTimerReset = document.getElementById('btn-timer-reset');
+const btnCloseTimer = document.getElementById('btn-close-timer');
 
 // Default initial subjects
 const DEFAULT_SUBJECTS = [
@@ -35,6 +52,37 @@ const DEFAULT_SUBJECTS = [
   { name: 'React', hours: 1 },
   { name: 'Node.js', hours: 1 }
 ];
+
+// Active Timer State
+let timerInterval = null;
+let timerTotalSeconds = 0;
+let timerRemainingSeconds = 0;
+let timerIsRunning = false;
+let currentTimerSubject = null;
+let activeScheduleItems = [];
+
+/* --------------------------------------------------------------------------
+   Live Current Clock
+   -------------------------------------------------------------------------- */
+function updateLiveClock() {
+  if (!clockDisplay) return;
+  const now = new Date();
+  let hours = now.getHours();
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  const paddedHours = String(hours).padStart(2, '0');
+
+  clockDisplay.textContent = `${paddedHours}:${minutes}:${seconds} ${ampm}`;
+}
+
+function initClock() {
+  updateLiveClock();
+  setInterval(updateLiveClock, 1000);
+}
 
 /* --------------------------------------------------------------------------
    Theme Management
@@ -69,7 +117,7 @@ function initTheme() {
           localStorage.setItem('study_planner_theme', newTheme);
         }
       } catch (e) {
-        // Graceful fallback if localStorage is restricted
+        // Ignore fallback
       }
     });
   }
@@ -293,6 +341,61 @@ function formatHours(hours) {
 }
 
 /**
+ * Converts seconds into HH:MM:SS format.
+ * @param {number} totalSec
+ * @returns {string}
+ */
+function formatCountdown(totalSec) {
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+
+  const paddedH = String(h).padStart(2, '0');
+  const paddedM = String(m).padStart(2, '0');
+  const paddedS = String(s).padStart(2, '0');
+
+  return `${paddedH}:${paddedM}:${paddedS}`;
+}
+
+/**
+ * Plays a gentle, pleasant notification chime via Web Audio API when a study timer completes.
+ */
+function playChime() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    // Note 1: E5 (659.25 Hz)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(659.25, now);
+    gain1.gain.setValueAtTime(0.12, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.35);
+
+    // Note 2: B5 (987.77 Hz)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(987.77, now + 0.2);
+    gain2.gain.setValueAtTime(0.12, now + 0.2);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.2);
+    osc2.stop(now + 0.75);
+  } catch (e) {
+    // Audio context not allowed or unsupported
+  }
+}
+
+/**
  * Generates schedule items sequentially starting at 09:00 AM.
  * @param {Array<{name: string, hours: number}>} subjects
  * @returns {Array<{name: string, hours: number, startTime: string, endTime: string}>}
@@ -326,6 +429,7 @@ function generateSchedule(subjects) {
  * Renders the generated schedule and summary into the DOM.
  */
 function renderSchedule(schedule, totalHours, availableHours) {
+  activeScheduleItems = schedule;
   const remainingHours = Math.max(0, Math.round((availableHours - totalHours) * 100) / 100);
 
   // Update Summary Bar
@@ -336,10 +440,11 @@ function renderSchedule(schedule, totalHours, availableHours) {
   // Build Timeline Items
   if (timelineList) {
     timelineList.innerHTML = '';
-    schedule.forEach(item => {
+    schedule.forEach((item, index) => {
       const timelineItem = document.createElement('div');
       timelineItem.className = 'timeline-item';
       timelineItem.setAttribute('role', 'listitem');
+      timelineItem.setAttribute('data-index', index);
 
       timelineItem.innerHTML = `
         <div class="timeline-card">
@@ -347,9 +452,22 @@ function renderSchedule(schedule, totalHours, availableHours) {
             <span class="timeline-time">${escapeHtml(item.startTime)} — ${escapeHtml(item.endTime)}</span>
             <h4 class="timeline-subject">${escapeHtml(item.name)}</h4>
           </div>
-          <span class="timeline-duration-badge">${formatHours(item.hours)}</span>
+          <div class="timeline-actions">
+            <span class="timeline-duration-badge">${formatHours(item.hours)}</span>
+            <button type="button" class="btn-start-session" data-index="${index}" aria-label="Start timer for ${escapeHtml(item.name)}">
+              <span>▶</span> Start Timer
+            </button>
+          </div>
         </div>
       `;
+
+      // Click to start timer for this session
+      const startBtn = timelineItem.querySelector('.btn-start-session');
+      if (startBtn) {
+        startBtn.addEventListener('click', () => {
+          startSessionTimer(index, item);
+        });
+      }
 
       timelineList.appendChild(timelineItem);
     });
@@ -369,6 +487,174 @@ function renderSchedule(schedule, totalHours, availableHours) {
   // Reveal Output Card
   if (emptyState) emptyState.classList.add('hidden');
   if (scheduleOutput) scheduleOutput.classList.remove('hidden');
+}
+
+/* --------------------------------------------------------------------------
+   Study Session Timer Logic
+   -------------------------------------------------------------------------- */
+function startSessionTimer(index, item) {
+  // Clear any existing active timer interval
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  currentTimerSubject = item;
+  timerTotalSeconds = Math.max(1, Math.round(item.hours * 3600));
+  timerRemainingSeconds = timerTotalSeconds;
+
+  // Update Timer Card UI
+  if (timerSubjectName) timerSubjectName.textContent = item.name;
+  if (timerTargetTime) {
+    timerTargetTime.textContent = `${item.startTime} — ${item.endTime} (${formatHours(item.hours)})`;
+  }
+  if (timerCountdown) {
+    timerCountdown.classList.remove('timer-finished');
+    timerCountdown.textContent = formatCountdown(timerRemainingSeconds);
+  }
+  if (timerProgressBar) {
+    timerProgressBar.style.width = '100%';
+  }
+
+  // Highlight active timeline row
+  highlightActiveTimelineItem(index);
+
+  // Reveal Timer Card
+  if (sessionTimerCard) {
+    sessionTimerCard.classList.remove('hidden');
+    sessionTimerCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Automatically start timer
+  startTimerCountdown();
+}
+
+function startTimerCountdown() {
+  timerIsRunning = true;
+  updateTimerToggleButton(true);
+
+  timerInterval = setInterval(() => {
+    timerRemainingSeconds--;
+
+    if (timerRemainingSeconds <= 0) {
+      // Completed!
+      timerRemainingSeconds = 0;
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerIsRunning = false;
+      updateTimerToggleButton(false);
+
+      if (timerCountdown) {
+        timerCountdown.textContent = 'Session Finished! 🎉';
+        timerCountdown.classList.add('timer-finished');
+      }
+      if (timerProgressBar) {
+        timerProgressBar.style.width = '0%';
+      }
+
+      playChime();
+      return;
+    }
+
+    // Update countdown display and progress bar
+    if (timerCountdown) {
+      timerCountdown.textContent = formatCountdown(timerRemainingSeconds);
+    }
+    if (timerProgressBar && timerTotalSeconds > 0) {
+      const pct = (timerRemainingSeconds / timerTotalSeconds) * 100;
+      timerProgressBar.style.width = `${pct}%`;
+    }
+  }, 1000);
+}
+
+function pauseTimerCountdown() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  timerIsRunning = false;
+  updateTimerToggleButton(false);
+}
+
+function toggleTimer() {
+  if (!currentTimerSubject) return;
+
+  if (timerIsRunning) {
+    pauseTimerCountdown();
+  } else {
+    // If timer completed, reset first
+    if (timerRemainingSeconds <= 0) {
+      timerRemainingSeconds = timerTotalSeconds;
+      if (timerCountdown) timerCountdown.classList.remove('timer-finished');
+    }
+    startTimerCountdown();
+  }
+}
+
+function resetTimer() {
+  pauseTimerCountdown();
+  if (!currentTimerSubject) return;
+
+  timerRemainingSeconds = timerTotalSeconds;
+  if (timerCountdown) {
+    timerCountdown.classList.remove('timer-finished');
+    timerCountdown.textContent = formatCountdown(timerRemainingSeconds);
+  }
+  if (timerProgressBar) {
+    timerProgressBar.style.width = '100%';
+  }
+}
+
+function closeTimer() {
+  pauseTimerCountdown();
+  currentTimerSubject = null;
+  if (sessionTimerCard) sessionTimerCard.classList.add('hidden');
+  clearActiveTimelineHighlight();
+}
+
+function updateTimerToggleButton(isRunning) {
+  if (!timerToggleIcon || !timerToggleText) return;
+  if (isRunning) {
+    timerToggleIcon.textContent = '⏸';
+    timerToggleText.textContent = 'Pause Timer';
+  } else {
+    timerToggleIcon.textContent = '▶';
+    timerToggleText.textContent = timerRemainingSeconds < timerTotalSeconds ? 'Resume Timer' : 'Start Timer';
+  }
+}
+
+function highlightActiveTimelineItem(activeIndex) {
+  if (!timelineList) return;
+  const items = timelineList.querySelectorAll('.timeline-item');
+  items.forEach((it, i) => {
+    const btn = it.querySelector('.btn-start-session');
+    if (i === activeIndex) {
+      it.classList.add('timeline-item--active');
+      if (btn) {
+        btn.classList.add('is-active');
+        btn.innerHTML = '<span>⚡</span> In Progress';
+      }
+    } else {
+      it.classList.remove('timeline-item--active');
+      if (btn) {
+        btn.classList.remove('is-active');
+        btn.innerHTML = '<span>▶</span> Start Timer';
+      }
+    }
+  });
+}
+
+function clearActiveTimelineHighlight() {
+  if (!timelineList) return;
+  const items = timelineList.querySelectorAll('.timeline-item');
+  items.forEach(it => {
+    it.classList.remove('timeline-item--active');
+    const btn = it.querySelector('.btn-start-session');
+    if (btn) {
+      btn.classList.remove('is-active');
+      btn.innerHTML = '<span>▶</span> Start Timer';
+    }
+  });
 }
 
 /* --------------------------------------------------------------------------
@@ -394,6 +680,7 @@ function createStudyPlan() {
 
 function clearPlanner() {
   clearError();
+  closeTimer();
 
   // Clear inputs
   if (availableTimeInput) availableTimeInput.value = '';
@@ -412,6 +699,7 @@ function clearPlanner() {
 
 function loadExample() {
   clearError();
+  closeTimer();
 
   // Populate example available time
   if (availableTimeInput) availableTimeInput.value = '4';
@@ -424,7 +712,7 @@ function loadExample() {
     });
   }
 
-  // Reset output to empty state (user must click "Create Study Plan")
+  // Reset output to empty state
   if (scheduleOutput) scheduleOutput.classList.add('hidden');
   if (emptyState) emptyState.classList.remove('hidden');
   if (timelineList) timelineList.innerHTML = '';
@@ -435,6 +723,7 @@ function loadExample() {
    Initialization
    -------------------------------------------------------------------------- */
 function init() {
+  initClock();
   initTheme();
 
   // Populate initial default subjects if list is empty
@@ -444,7 +733,7 @@ function init() {
     });
   }
 
-  // Event Listeners
+  // Event Listeners - Planner Form
   if (btnAddSubject) {
     btnAddSubject.addEventListener('click', () => {
       addSubject('', '', true);
@@ -454,6 +743,11 @@ function init() {
   if (btnCreatePlan) btnCreatePlan.addEventListener('click', createStudyPlan);
   if (btnClear) btnClear.addEventListener('click', clearPlanner);
   if (btnLoadExample) btnLoadExample.addEventListener('click', loadExample);
+
+  // Event Listeners - Study Session Timer
+  if (btnTimerToggle) btnTimerToggle.addEventListener('click', toggleTimer);
+  if (btnTimerReset) btnTimerReset.addEventListener('click', resetTimer);
+  if (btnCloseTimer) btnCloseTimer.addEventListener('click', closeTimer);
 }
 
 // Ensure execution whether DOM is still loading or already ready
