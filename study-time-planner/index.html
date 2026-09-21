@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Time Planner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="header-titles">
+          <h1>Study Time Planner</h1>
+          <p class="subtitle">Plan your study time and organize your subjects into a simple daily schedule.</p>
+        </div>
+        <button id="theme-toggle" class="theme-toggle-btn" type="button" aria-label="Toggle dark mode" title="Toggle theme">
+          <span class="theme-icon" id="theme-icon">🌙</span>
+          <span class="theme-label" id="theme-label">Dark</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Input Card -->
+      <section class="card planner-input-card" aria-labelledby="input-heading">
+        <h2 id="input-heading" class="sr-only">Planner Configuration</h2>
+
+        <!-- Available Study Time -->
+        <div class="form-group">
+          <label for="available-time" class="form-label">
+            <span class="label-title">Available Study Time</span>
+            <span class="label-hint">(in hours, e.g. 4 or 4.5)</span>
+          </label>
+          <div class="input-with-addon">
+            <input
+              type="number"
+              id="available-time"
+              class="form-control"
+              min="0.5"
+              step="0.5"
+              placeholder="e.g. 4"
+              value="4"
+              required
+            >
+            <span class="input-addon">hours</span>
+          </div>
+        </div>
+
+        <!-- Subjects Section -->
+        <div class="subjects-section">
+          <div class="section-header">
+            <h3 class="section-title">Subjects</h3>
+            <span class="section-subtitle">Set hours needed for each subject</span>
+          </div>
+
+          <!-- Subject Rows Container -->
+          <div id="subjects-list" class="subjects-list" role="list">
+            <!-- Dynamic rows populated by script.js -->
+          </div>
+
+          <!-- Add Subject Button -->
+          <div class="add-subject-wrapper">
+            <button type="button" id="btn-add-subject" class="btn btn-secondary btn-add">
+              <span class="btn-icon">+</span> Add Subject
+            </button>
+          </div>
+        </div>
+
+        <!-- Error / Validation Banner -->
+        <div id="error-banner" class="error-banner hidden" role="alert" aria-live="polite"></div>
+
+        <!-- Primary Action Buttons -->
+        <div class="actions-group">
+          <button type="button" id="btn-create-plan" class="btn btn-primary">
+            Create Study Plan
+          </button>
+          <button type="button" id="btn-clear" class="btn btn-outline">
+            Clear
+          </button>
+          <button type="button" id="btn-load-example" class="btn btn-text">
+            Load Example
+          </button>
+        </div>
+      </section>
+
+      <!-- Output Card -->
+      <section class="card planner-output-card" aria-labelledby="output-heading">
+        <h2 id="output-heading" class="sr-only">Study Plan Output</h2>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="empty-state">
+          <div class="empty-state-icon">📋</div>
+          <p class="empty-state-text">Your study plan will appear here.</p>
+          <span class="empty-state-subtext">Add your subjects and click "Create Study Plan" above.</span>
+        </div>
+
+        <!-- Generated Schedule Output (hidden by default) -->
+        <div id="schedule-output" class="schedule-output hidden">
+          <!-- Summary Bar -->
+          <div class="summary-card">
+            <div class="summary-item">
+              <span class="summary-label">Total Study Time</span>
+              <span id="summary-total-time" class="summary-value">4 hours</span>
+            </div>
+            <div class="summary-divider" aria-hidden="true"></div>
+            <div class="summary-item">
+              <span class="summary-label">Subjects</span>
+              <span id="summary-subjects-count" class="summary-value">3</span>
+            </div>
+            <div class="summary-divider" aria-hidden="true"></div>
+            <div class="summary-item">
+              <span class="summary-label">Remaining</span>
+              <span id="summary-remaining-time" class="summary-value highlight">0 hours</span>
+            </div>
+          </div>
+
+          <!-- Schedule Heading -->
+          <div class="schedule-header">
+            <h3 class="schedule-title">Today's Study Plan</h3>
+            <span class="schedule-note">Starts at 09:00 AM</span>
+          </div>
+
+          <!-- Timeline List -->
+          <div id="timeline-list" class="timeline" role="list">
+            <!-- Populated dynamically by script.js -->
+          </div>
+
+          <!-- Remaining Notice if under-allocated -->
+          <div id="remaining-notice" class="remaining-notice hidden" role="status">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Study Time Planner &bull; Simple, lightweight daily scheduling.</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
